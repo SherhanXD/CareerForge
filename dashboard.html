@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareerForge — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="dash-body">
+  <div class="dash-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a href="index.html" class="logo sidebar-logo">
+        <span class="logo-mark">CF</span>
+        <span class="logo-text">CareerForge</span>
+      </a>
+      <nav class="side-nav" id="sideNav"></nav>
+      <div class="side-foot">
+        <button class="btn btn-ghost btn-block" id="logoutBtn">Log out</button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="dash-main">
+      <header class="dash-top">
+        <div>
+          <p class="eyebrow" id="roleBadge">Student</p>
+          <h1 id="welcome">Welcome back</h1>
+        </div>
+        <div class="profile-chip">
+          <div class="avatar" id="avatar">SD</div>
+          <div class="profile-meta">
+            <strong id="handle">SunDevil_0000</strong>
+            <span>anonymous handle</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="dash-content" id="dashContent"></section>
+    </main>
+  </div>
+
+  <script src="features.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

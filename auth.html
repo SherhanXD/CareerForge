@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareerForge — Sign in</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="auth-body">
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark">CF</span>
+        <span class="logo-text">CareerForge</span>
+      </a>
+    </div>
+  </nav>
+
+  <main class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="signup" id="tabSignup">Sign up</button>
+        <button class="auth-tab" data-tab="login" id="tabLogin">Log in</button>
+      </div>
+
+      <!-- SIGN UP -->
+      <form id="signupForm" class="auth-form">
+        <h1>Create your account</h1>
+        <p class="auth-help">Choose who you are. You can only pick one.</p>
+
+        <div class="role-choice">
+          <label class="role-option">
+            <input type="radio" name="role" value="student" checked />
+            <div class="role-inner">
+              <div class="role-emoji">🎒</div>
+              <strong>Student</strong>
+              <span>Use every tool and get reviews</span>
+            </div>
+          </label>
+          <label class="role-option">
+            <input type="radio" name="role" value="alumni" />
+            <div class="role-inner">
+              <div class="role-emoji">🎓</div>
+              <strong>Alumni</strong>
+              <span>Review student resumes by text</span>
+            </div>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Name (private, never shown publicly)</span>
+          <input type="text" name="name" placeholder="Jordan Rivera" required />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" placeholder="you@asu.edu" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" name="password" placeholder="••••••••" required minlength="4" />
+        </label>
+
+        <p class="anon-note">🔒 You'll get an anonymous handle. Others never see your real name.</p>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Create account</button>
+        <p class="form-error" id="signupError"></p>
+      </form>
+
+      <!-- LOGIN -->
+      <form id="loginForm" class="auth-form hidden">
+        <h1>Welcome back</h1>
+        <p class="auth-help">Log in to your dashboard.</p>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" placeholder="you@asu.edu" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" name="password" placeholder="••••••••" required />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block btn-lg">Log in</button>
+        <p class="form-error" id="loginError"></p>
+      </form>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
