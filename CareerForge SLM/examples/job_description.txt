@@ -1,0 +1,5 @@
+We are seeking a machine-learning engineering intern who can build and evaluate
+NLP systems. Candidates should have experience with Python, PyTorch, SQL, Git,
+model evaluation, and REST APIs. Experience deploying models with Docker or AWS
+is preferred. Strong written communication and the ability to explain technical
+tradeoffs are required.

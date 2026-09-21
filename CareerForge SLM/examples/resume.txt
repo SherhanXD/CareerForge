@@ -1,0 +1,17 @@
+STUDENT CANDIDATE
+
+EDUCATION
+Bachelor of Science in Data Science, Expected May 2027
+
+PROJECTS
+CareerForge
+- Developed a student career-readiness dashboard using HTML, CSS, and JavaScript.
+- Implemented a resume checker that compares resume text with a job description.
+- Created anonymous resume sharing with email, phone, and URL redaction.
+
+Weak Supervision Sentiment Classifier
+- Built a PyTorch pipeline for training a DistilBERT sentiment classifier on pseudo-labeled reviews.
+- Compared standard and confidence-weighted training across five random seeds.
+
+SKILLS
+Python, JavaScript, HTML, CSS, PyTorch, SQL, Git

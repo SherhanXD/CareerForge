@@ -55,6 +55,7 @@ function initAuthPage() {
   // open on the right tab based on ?mode=
   const params = new URLSearchParams(location.search);
   showTab(params.get('mode') === 'login' ? 'login' : 'signup');
+  const destination = params.get('next') === 'resume' ? 'dashboard.html?tool=resume' : 'dashboard.html';
 
   // SIGN UP
   signupForm.addEventListener('submit', (e) => {
@@ -81,7 +82,7 @@ function initAuthPage() {
     users.push(user);
     saveUsers(users);
     setSession(user);
-    location.href = 'dashboard.html';
+    location.href = destination;
   });
 
   // LOGIN
@@ -99,7 +100,7 @@ function initAuthPage() {
       return;
     }
     setSession(user);
-    location.href = 'dashboard.html';
+    location.href = destination;
   });
 }
 
@@ -123,7 +124,11 @@ function initDashboard() {
   if (!dashContent) return;
 
   const user = getSession();
-  if (!user) { location.href = 'auth.html?mode=login'; return; }
+  if (!user) {
+    location.href = new URLSearchParams(location.search).get('tool') === 'resume'
+      ? 'auth.html?mode=login&next=resume' : 'auth.html?mode=login';
+    return;
+  }
 
   // header
   document.getElementById('welcome').textContent = `Welcome back, ${user.handle}`;
@@ -198,7 +203,14 @@ function initDashboard() {
     location.href = 'index.html';
   });
 
-  renderHome();
+  const requestedTool = new URLSearchParams(location.search).get('tool');
+  if (requestedTool && tools.some(t => t.id === requestedTool)) {
+    renderTool(requestedTool);
+    document.querySelectorAll('.side-item').forEach(s =>
+      s.classList.toggle('active', s.getAttribute('data-nav') === requestedTool));
+  } else {
+    renderHome();
+  }
 }
 
 /* ---------- boot ---------- */

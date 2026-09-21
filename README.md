@@ -22,7 +22,20 @@ anonymous by default.
 
 ## Run it
 
-No build step, no install. Just open `index.html` in a browser.
+For all tools except Resume Checker, no build step or install is needed. Open
+`index.html` in a browser.
+
+To use Resume Checker with the local SLM, install the dependencies described in
+the `CareerForge SLM/README.md`, activate that Python environment, and
+run from `CareerForge SLM`:
+
+```bash
+python api.py
+```
+
+Then open `http://127.0.0.1:8000`. The local server serves this website and
+the Resume Checker API together. The first analysis loads the model and may
+take longer. `GET /api/health` checks whether the adapter file is present.
 
 Or serve it locally:
 
@@ -38,8 +51,9 @@ npx serve
 ## Tech
 
 Plain HTML, CSS, and JavaScript. All data is stored in the browser via `localStorage`,
-so there's no backend and nothing to pay for. The "AI" features currently use client-side
-heuristics and can be swapped for a real LLM later.
+so there's no backend for those tools. Resume Checker sends the pasted resume
+and job description to the local SLM API; the other AI-labelled tools still use
+client-side heuristics.
 
 ## Files
 
