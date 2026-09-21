@@ -1,8 +1,6 @@
 /* ============================================================
    CareerForge — feature modules
-   All logic runs client-side (no backend, no API keys).
-   Smart heuristics stand in for AI so everything works free & offline.
-   Swap the "brain" functions for a real LLM later.
+   Most features run client-side; Resume Checker calls the local SLM API.
    ============================================================ */
 
 /* ---------- per-user data store ---------- */
@@ -107,35 +105,6 @@ function scrubPII(text) {
   }
   out = lines.join('\n');
   return { text: out, redactions };
-}
-
-// Resume scoring against a job description.
-function scoreResume(resume, jd) {
-  const r = resume.toLowerCase();
-  const words = (jd.toLowerCase().match(/[a-z][a-z+#.]{2,}/g) || []);
-  const stop = new Set(['the','and','for','with','you','our','are','will','that','this','have','from','your','all','a','an','to','of','in','on','as','is','be','or','we','they','their']);
-  const keywords = [...new Set(words.filter(w => !stop.has(w)))];
-  const matched = keywords.filter(k => r.includes(k));
-  const missing = keywords.filter(k => !r.includes(k)).slice(0, 12);
-  const coverage = keywords.length ? Math.round((matched.length / keywords.length) * 100) : 0;
-
-  // heuristics
-  const hasNumbers = /\d/.test(resume);
-  const bulletCount = (resume.match(/^[\s]*[-•*]/gm) || []).length;
-  const actionVerbs = ['led','built','created','designed','developed','improved','launched','managed','reduced','increased','delivered'];
-  const verbHits = actionVerbs.filter(v => r.includes(v)).length;
-
-  let score = Math.round(coverage * 0.6 + Math.min(verbHits, 6) / 6 * 20 + (hasNumbers ? 10 : 0) + Math.min(bulletCount, 10) / 10 * 10);
-  score = Math.max(5, Math.min(99, score));
-
-  const tips = [];
-  if (coverage < 60) tips.push('Add more keywords from the job description — your resume is missing several.');
-  if (!hasNumbers) tips.push('Quantify your impact with numbers (e.g., "cut load time by 40%").');
-  if (verbHits < 3) tips.push('Start bullets with strong action verbs like "Led", "Built", "Improved".');
-  if (bulletCount < 3) tips.push('Use concise bullet points instead of long paragraphs.');
-  if (!tips.length) tips.push('Strong match! Tighten wording and keep it to one page.');
-
-  return { score, coverage, matched: matched.slice(0, 12), missing, tips };
 }
 
 // Interview questions from a role/resume.
@@ -308,22 +277,47 @@ window.CF_FEATURES.resume = {
       </div>`;
   },
   init(user) {
-    document.getElementById('rcRun').addEventListener('click', () => {
+    document.getElementById('rcRun').addEventListener('click', async () => {
       const resume = document.getElementById('rcResume').value.trim();
       const jd = document.getElementById('rcJd').value.trim();
       if (!resume || !jd) { alert('Paste both your resume and a job description.'); return; }
-      const res = scoreResume(resume, jd);
-      document.getElementById('rcArea').innerHTML = `
+      const button = document.getElementById('rcRun');
+      const area = document.getElementById('rcArea');
+      button.disabled = true;
+      button.textContent = 'Analyzing…';
+      area.innerHTML = '<p class="feat-sub" role="status">Analyzing your resume. This may take a minute.</p>';
+      try {
+        const response = await fetch('/api/resume-check', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume, job_description: jd }),
+        });
+        const res = await response.json();
+        if (!response.ok) throw new Error(res.error || 'Analysis failed.');
+        const score = Math.max(0, Math.min(100, Number(res.overall_score) || 0));
+        const list = (value) => Array.isArray(value) ? value : [];
+        const scores = res.category_scores || {};
+        const categories = [['Job relevance', scores.job_relevance], ['Impact', scores.impact], ['Clarity', scores.clarity], ['Completeness', scores.completeness]];
+        area.innerHTML = `
         <div class="report">
-          <div class="score-ring" style="--v:${res.score}"><span>${res.score}</span><small>/100</small></div>
-          <p class="report-line">Keyword match: <strong>${res.coverage}%</strong></p>
+          <div class="score-ring" style="--v:${score}"><span>${score}</span><small>/100</small></div>
+          <p class="report-line">Resume match score</p>
+          <div class="two-col">${categories.map(([label, value]) => `<div class="mini"><strong>${label}</strong><span>${escapeHtml(String(value ?? '—'))}/100</span></div>`).join('')}</div>
           <div class="two-col">
-            <div><h4>✅ Matched keywords</h4><div class="chips">${res.matched.map(k => `<span class="chip good">${escapeHtml(k)}</span>`).join('') || '<span class="empty">none</span>'}</div></div>
-            <div><h4>⚠️ Missing keywords</h4><div class="chips">${res.missing.map(k => `<span class="chip bad">${escapeHtml(k)}</span>`).join('') || '<span class="empty">none</span>'}</div></div>
+            <div><h4>✅ Matched skills</h4><div class="chips">${list(res.matched_skills).map(k => `<span class="chip good">${escapeHtml(String(k))}</span>`).join('') || '<span class="empty">none</span>'}</div></div>
+            <div><h4>⚠️ Missing skills</h4><div class="chips">${list(res.missing_skills).map(k => `<span class="chip bad">${escapeHtml(String(k))}</span>`).join('') || '<span class="empty">none</span>'}</div></div>
           </div>
-          <h4>💡 How to improve</h4>
-          <ul class="tips">${res.tips.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>
+          <h4>Strengths</h4><ul class="tips">${list(res.strengths).map(s => `<li><strong>${escapeHtml(String(s.evidence || ''))}</strong> ${escapeHtml(String(s.reason || ''))}</li>`).join('') || '<li>No strengths listed.</li>'}</ul>
+          <h4>💡 How to improve</h4><ul class="tips">${list(res.issues).map(i => `<li><strong>${escapeHtml(String(i.section || 'Resume'))}:</strong> ${escapeHtml(String(i.reason || ''))} ${escapeHtml(String(i.suggestion || ''))}</li>`).join('') || '<li>No issues listed.</li>'}</ul>
+          ${list(res.rewrites).filter(r => r.facts_added === false).length ? `<h4>Suggested rewrites</h4><ul class="tips">${list(res.rewrites).filter(r => r.facts_added === false).map(r => `<li>${escapeHtml(String(r.original || ''))} → ${escapeHtml(String(r.suggested || ''))}</li>`).join('')}</ul>` : ''}
+          ${list(res.limitations).length ? `<h4>Limitations</h4><ul class="tips">${list(res.limitations).map(t => `<li>${escapeHtml(String(t))}</li>`).join('')}</ul>` : ''}
+          <p class="report-line">CareerForge rubric score, not a hiring prediction.</p>
         </div>`;
+      } catch (error) {
+        area.innerHTML = `<p class="form-error" role="alert">${escapeHtml(error instanceof TypeError ? 'Cannot reach Resume Checker. Start the local API server.' : error.message)}</p>`;
+      } finally {
+        button.disabled = false;
+        button.textContent = '📊 Analyze';
+      }
     });
   },
 };
