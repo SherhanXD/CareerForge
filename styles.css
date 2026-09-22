@@ -255,6 +255,16 @@ a { color: inherit; text-decoration: none; }
 .feat-input { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 28px; }
 .feat-input h3 { font-size: 19px; margin-bottom: 4px; }
 .feat-sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+.reflection-kicker { display: block; color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 5px; }
+.prompt-boost { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 12px; }
+.prompt-chip { background: var(--bg-2); border: 1px solid var(--line); border-radius: 11px; color: var(--muted); cursor: pointer; font: inherit; font-size: 13px; line-height: 1.4; padding: 10px 12px; text-align: left; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+.prompt-chip:hover, .prompt-chip.active { background: var(--surface-2); border-color: var(--maroon-2); color: var(--text); }
+.prompt-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.selected-prompt { min-height: 24px; color: var(--gold-2); font-size: 13px; margin: 0 0 8px; }
+.logger-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.logger-status { color: var(--muted); flex: 1; font-size: 13px; min-width: 220px; }
+.btn:disabled { cursor: wait; opacity: .65; transform: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .ta {
   width: 100%; min-height: 130px; resize: vertical; padding: 14px; border-radius: 12px;
   background: var(--bg-2); border: 1px solid var(--line); color: var(--text);
@@ -271,6 +281,7 @@ a { color: inherit; text-decoration: none; }
 .entry-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .entry-date { color: var(--muted); font-size: 13px; }
 .entry-raw { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14.5px; color: var(--text); margin-bottom: 12px; }
+.entry-prompt { color: var(--gold-2); font-size: 13px; font-weight: 600; margin-bottom: 7px; }
 pre.entry-raw { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
@@ -282,6 +293,64 @@ pre.entry-raw { background: var(--bg-2); border: 1px solid var(--line); border-r
 .mini strong { display: block; font-size: 13px; color: var(--gold); margin-bottom: 6px; }
 .mini pre { white-space: pre-wrap; font-family: inherit; font-size: 14px; color: var(--muted); }
 .mini.review p { font-size: 14.5px; }
+.artifact { transition: border-color .2s ease, background .2s ease; }
+.artifact.accepted { background: rgba(82,127,123,.09); border-color: var(--maroon); }
+.artifact-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.artifact-head > strong { margin-bottom: 0; }
+.accepted-mark { color: var(--gold-2); font-size: 11px; font-weight: 700; }
+.artifact-text { margin-top: 7px; white-space: pre-wrap; }
+.empty-artifact { color: var(--muted); font-style: italic; }
+.artifact-editor { display: none; margin: 9px 0 0; min-height: 90px; }
+.artifact-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+.artifact-action { background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 600; padding: 5px 9px; }
+.artifact-action:hover { background: var(--surface-2); border-color: var(--maroon-2); color: var(--text); }
+.artifact-action.accept { border-color: var(--maroon); color: var(--gold-2); }
+.artifact-action.danger:hover { border-color: #9d5c5c; color: #f0a5a5; }
+.artifact-action:disabled { cursor: default; opacity: .45; }
+.artifact-action.edit-only { display: none; }
+.artifact.editing .artifact-text, .artifact.editing .artifact-action:not(.edit-only) { display: none; }
+.artifact.editing .artifact-editor { display: block; }
+.artifact.editing .artifact-action.edit-only { display: inline-flex; }
+.artifact-status { color: var(--muted); display: block; font-size: 12px; min-height: 18px; margin-top: 6px; }
+.journey-saved { align-items: center; background: rgba(82,127,123,.12); border: 1px solid var(--maroon); border-radius: 11px; display: flex; gap: 11px; margin-top: 12px; padding: 10px 13px; }
+.journey-saved > span { color: var(--gold); font-size: 20px; }
+.journey-saved strong { display: block; font-size: 13px; }
+.journey-saved p { color: var(--muted); font-size: 12px; }
+.follow-up-block { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+.follow-up-block h4 { font-size: 15px; margin-bottom: 3px; }
+.follow-up-block > p { color: var(--muted); font-size: 13px; margin-bottom: 13px; }
+.added-details { background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 15px; padding: 12px 14px; }
+.added-details > strong { color: var(--gold); display: block; font-size: 13px; margin-bottom: 7px; }
+.added-details p { color: var(--text); font-size: 13px; margin-top: 6px; }
+.added-details p span { color: var(--muted); display: block; }
+.follow-up-field { display: block; margin-bottom: 10px; }
+.follow-up-field span { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 5px; }
+.follow-up-field .ta { margin-bottom: 0; min-height: 62px; }
+.evidence-note { color: var(--muted); font-size: 12.5px; margin-top: 12px; }
+
+/* accepted experience journal */
+.journey-view { max-width: 900px; }
+.journey-intro { background: linear-gradient(135deg, #20332f, var(--surface)); border: 1px solid var(--maroon); border-radius: var(--radius); margin-bottom: 28px; padding: 25px; }
+.journey-intro h3 { font-size: 23px; letter-spacing: -.3px; margin-bottom: 6px; }
+.journey-intro p { color: var(--muted); max-width: 650px; }
+.journey-timeline { margin-left: 11px; padding-left: 29px; position: relative; }
+.journey-timeline::before { background: linear-gradient(var(--gold), var(--line)); bottom: 20px; content: ''; left: 5px; position: absolute; top: 10px; width: 1px; }
+.journey-entry { margin-bottom: 20px; position: relative; }
+.journey-marker { background: var(--gold); border: 4px solid var(--bg); border-radius: 50%; box-shadow: 0 0 0 1px var(--maroon); height: 13px; left: -30px; position: absolute; top: 22px; width: 13px; }
+.journey-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.journey-date { align-items: center; color: var(--muted); display: flex; font-size: 12px; justify-content: space-between; margin-bottom: 12px; }
+.journey-date span { color: var(--gold); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.journey-prompt { color: var(--gold-2); font-size: 13px; margin-bottom: 11px; }
+.journey-card section { border-top: 1px solid var(--line); padding: 12px 0; }
+.journey-card section strong { color: var(--gold); display: block; font-size: 12px; margin-bottom: 5px; text-transform: uppercase; }
+.journey-card section p { font-size: 14px; white-space: pre-wrap; }
+.journey-card .journey-story p { color: var(--text); font-family: Georgia, serif; font-size: 16px; line-height: 1.7; }
+.journey-remove { background: transparent; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-size: 12px; padding: 5px 0; }
+.journey-remove:hover { color: #f0a5a5; }
+.journey-empty { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 48px 24px; text-align: center; }
+.journey-empty > span { color: var(--gold); display: block; font-size: 34px; margin-bottom: 8px; }
+.journey-empty h3 { font-size: 20px; }
+.journey-empty p { color: var(--muted); margin: 6px auto 18px; max-width: 430px; }
 
 .status { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
 .status.pending { background: rgba(168,203,195,.12); color: var(--gold); }
@@ -338,4 +407,5 @@ pre.entry-raw { background: var(--bg-2); border: 1px solid var(--line); border-r
 
 @media (max-width: 620px) {
   .two-col, .module-grid { grid-template-columns: 1fr; }
+  .prompt-boost { grid-template-columns: 1fr; }
 }

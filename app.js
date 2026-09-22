@@ -55,7 +55,9 @@ function initAuthPage() {
   // open on the right tab based on ?mode=
   const params = new URLSearchParams(location.search);
   showTab(params.get('mode') === 'login' ? 'login' : 'signup');
-  const destination = params.get('next') === 'resume' ? 'dashboard.html?tool=resume' : 'dashboard.html';
+  const requestedDestination = params.get('next');
+  const destination = ['logger', 'journey', 'resume'].includes(requestedDestination)
+    ? `dashboard.html?tool=${requestedDestination}` : 'dashboard.html';
 
   // SIGN UP
   signupForm.addEventListener('submit', (e) => {
@@ -108,7 +110,8 @@ function initAuthPage() {
    DASHBOARD PAGE
    ============================================================ */
 const STUDENT_TOOLS = [
-  { id: 'logger', icon: '📝', title: 'Life Logger', desc: 'Turn today into resume bullets and interview stories.', tag: 'AI' },
+  { id: 'logger', icon: '📝', title: 'Life Logger', desc: 'Reflect on an experience and uncover the story already inside it.', tag: 'AI' },
+  { id: 'journey', icon: '✦', title: 'Your Journey', desc: 'Revisit the experience stories and résumé points you chose to keep.', tag: 'Journal' },
   { id: 'interview', icon: '🎤', title: 'AI Interview Coach', desc: 'Practice a mock interview tailored to your resume.', tag: 'AI' },
   { id: 'resume', icon: '📄', title: 'Resume Checker', desc: 'Score your resume against a job description.', tag: 'AI' },
   { id: 'alumni', icon: '🎓', title: 'Alumni Reviews', desc: 'Submit your resume for honest written feedback.', tag: 'People' },
@@ -125,8 +128,9 @@ function initDashboard() {
 
   const user = getSession();
   if (!user) {
-    location.href = new URLSearchParams(location.search).get('tool') === 'resume'
-      ? 'auth.html?mode=login&next=resume' : 'auth.html?mode=login';
+    const requestedTool = new URLSearchParams(location.search).get('tool');
+    const next = ['logger', 'journey', 'resume'].includes(requestedTool) ? `&next=${requestedTool}` : '';
+    location.href = `auth.html?mode=login${next}`;
     return;
   }
 
@@ -146,7 +150,7 @@ function initDashboard() {
   function renderHome() {
     const intro = user.role === 'alumni'
       ? `<div class="banner"><h2>Thanks for giving back 🎓</h2><p>Students submit resumes anonymously. Read them and leave honest text feedback, that's the whole job.</p></div>`
-      : `<div class="banner"><h2>Pick a tool to get started</h2><p>Everything you do feeds the next step. Log your day, then watch it show up in your resume and interviews.</p></div>`;
+      : `<div class="banner"><h2>Start with a moment from your day</h2><p>Reflect on what happened, recognize what you contributed, and practice telling the story in your own words.</p></div>`;
 
     dashContent.innerHTML = intro + `<div class="tool-grid">` + tools.map(t => `
       <button class="tool-card" data-nav="${t.id}">

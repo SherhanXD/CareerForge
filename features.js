@@ -1,6 +1,6 @@
 /* ============================================================
    CareerForge — feature modules
-   Most features run client-side; Resume Checker calls the local SLM API.
+   Most features run client-side; Life Logger and Resume Checker call the local SLM API.
    ============================================================ */
 
 /* ---------- per-user data store ---------- */
@@ -22,7 +22,7 @@ function saveShared(name, value) {
 }
 
 function escapeHtml(s = '') {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function timeAgo(iso) {
@@ -39,41 +39,51 @@ function timeAgo(iso) {
    THE "BRAIN" — heuristic stand-ins for AI
    ============================================================ */
 
-const SKILL_MAP = [
-  { kw: ['debug', 'bug', 'fixed', 'error', 'crash'], skill: 'Debugging & problem-solving' },
-  { kw: ['led', 'organized', 'coordinated', 'managed', 'mentored'], skill: 'Leadership' },
-  { kw: ['team', 'collaborated', 'pair', 'group'], skill: 'Teamwork & collaboration' },
-  { kw: ['presented', 'demo', 'pitch', 'spoke', 'talk'], skill: 'Communication & presenting' },
-  { kw: ['python', 'java', 'javascript', 'react', 'sql', 'node', 'c++', 'html', 'css'], skill: 'Technical / programming' },
-  { kw: ['designed', 'figma', 'ui', 'ux', 'wireframe', 'prototype'], skill: 'Design' },
-  { kw: ['data', 'analysis', 'analyzed', 'metrics', 'dashboard', 'excel'], skill: 'Data analysis' },
-  { kw: ['wrote', 'documentation', 'blog', 'report', 'essay'], skill: 'Writing & documentation' },
-  { kw: ['deadline', 'planned', 'scheduled', 'prioritized'], skill: 'Time management' },
-  { kw: ['learned', 'studied', 'course', 'tutorial', 'researched'], skill: 'Self-learning' },
+const LIFE_LOGGER_PROMPTS = [
+  'What was one moment today when something did not go as expected?',
+  'Who did you help today, and what did you actually do?',
+  'What problem, however small, did you work through today?',
+  'What did you learn, notice, or understand differently today?',
+  'When did you make a decision or take initiative today?',
+  'What part of today required patience, teamwork, or clear communication?',
 ];
 
-function extractSkills(text) {
-  const lower = text.toLowerCase();
-  const found = [];
-  SKILL_MAP.forEach(({ kw, skill }) => {
-    if (kw.some(k => lower.includes(k)) && !found.includes(skill)) found.push(skill);
+async function requestLifeLogger(entry, reflectionPrompt = '', followUpAnswers = {}) {
+  const response = await fetch('/api/life-logger', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      entry,
+      reflection_prompt: reflectionPrompt,
+      follow_up_answers: followUpAnswers,
+    }),
   });
-  return found.length ? found : ['General experience'];
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || 'Reflection failed. Please try again.');
+  return result;
 }
 
-// Turn a log entry into a resume bullet + a STAR-ish interview story.
-function logToPortfolio(text) {
-  const skills = extractSkills(text);
-  const clean = text.trim().replace(/\s+/g, ' ');
-  const firstVerb = clean.split(' ')[0];
-  const action = firstVerb.match(/ed$|ing$/i) ? clean : `Worked on ${clean.charAt(0).toLowerCase()}${clean.slice(1)}`;
-  const bullet = `${action.charAt(0).toUpperCase()}${action.slice(1)}${/[.!?]$/.test(action) ? '' : '.'}`;
-  const story =
-    `Situation: ${clean}\n` +
-    `Task: I needed to make progress and deliver a result.\n` +
-    `Action: I broke it down, applied ${skills[0].toLowerCase()}, and pushed it forward.\n` +
-    `Result: I completed it and can now speak to it confidently in an interview.`;
-  return { skills, bullet, story };
+async function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const helper = document.createElement('textarea');
+  helper.value = text;
+  helper.setAttribute('readonly', '');
+  helper.style.position = 'fixed';
+  helper.style.opacity = '0';
+  document.body.appendChild(helper);
+  helper.select();
+  const copied = document.execCommand('copy');
+  helper.remove();
+  if (!copied) throw new Error('Copy is not available in this browser.');
+}
+
+function journalDate(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // PII scrubbing — the privacy feature. Regex + simple name detection.
@@ -158,46 +168,383 @@ window.CF_FEATURES = {};
 window.CF_FEATURES.logger = {
   render(user) {
     const logs = loadData(user, 'logs', []);
+    let upgraded = false;
+    logs.forEach((log, index) => {
+      if (!log.id) {
+        log.id = `legacy-${user.id}-${index}`;
+        upgraded = true;
+      }
+      if (log.bullet == null && log.resume_bullet) {
+        log.bullet = log.resume_bullet;
+        upgraded = true;
+      }
+    });
+    if (upgraded) saveData(user, 'logs', logs);
     return `
       <div class="feat">
         <div class="feat-input">
-          <h3>What did you work on today?</h3>
-          <p class="feat-sub">Write a sentence or two. CareerForge turns it into resume bullets and interview stories.</p>
-          <textarea id="logText" class="ta" placeholder="e.g. Debugged a tricky login bug and led a study group for the midterm."></textarea>
-          <button class="btn btn-primary" id="logAdd">✨ Add & extract</button>
+          <span class="reflection-kicker">A two-minute reflection</span>
+          <h3>Look back at one moment from your day</h3>
+          <p class="feat-sub">It can come from class, work, a project, home, or your community. An unfinished or difficult moment still counts.</p>
+          <div class="prompt-boost" aria-label="Reflection prompt suggestions">
+            ${LIFE_LOGGER_PROMPTS.map((prompt, index) => `
+              <button class="prompt-chip" type="button" data-prompt-index="${index}">${escapeHtml(prompt)}</button>
+            `).join('')}
+          </div>
+          <p class="selected-prompt" id="logPrompt" aria-live="polite">Choose a question above if you need a starting point.</p>
+          <label class="sr-only" for="logText">Describe the experience</label>
+          <textarea id="logText" class="ta" maxlength="60000" placeholder="What happened? Focus on what you saw, chose, tried, or contributed."></textarea>
+          <div class="logger-actions">
+            <button class="btn btn-primary" id="logAdd">Reflect on this experience</button>
+            <span class="logger-status" id="logStatus" role="status" aria-live="polite"></span>
+          </div>
         </div>
-        <h4 class="list-head">Your portfolio (${logs.length})</h4>
+        <h4 class="list-head">Your experience stories (${logs.length})</h4>
         <div id="logList" class="card-list">${this.listHtml(logs)}</div>
       </div>`;
   },
   listHtml(logs) {
-    if (!logs.length) return `<p class="empty">No entries yet. Add your first above.</p>`;
-    return logs.slice().reverse().map(l => `
-      <div class="entry">
+    if (!logs.length) return `<p class="empty">No reflections yet. Start with one moment from today.</p>`;
+    return [...logs].reverse().map(l => `
+      <article class="entry" data-log-id="${escapeHtml(l.id || '')}">
         <div class="entry-top"><span class="entry-date">${timeAgo(l.at)}</span></div>
+        ${l.prompt ? `<p class="entry-prompt">${escapeHtml(l.prompt)}</p>` : ''}
         <p class="entry-raw">${escapeHtml(l.text)}</p>
-        <div class="chips">${l.skills.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>
-        <div class="mini"><strong>📄 Resume bullet</strong><p>${escapeHtml(l.bullet)}</p></div>
-        <div class="mini"><strong>🎤 Interview story</strong><pre>${escapeHtml(l.story)}</pre></div>
-      </div>`).join('');
+        ${Array.isArray(l.skills) && l.skills.length ? `<div class="chips">${l.skills.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+        ${this.artifactHtml(l, 'bullet')}
+        ${this.artifactHtml(l, 'story')}
+        ${l.accepted && l.accepted.bullet && l.accepted.story ? `
+          <div class="journey-saved"><span>✓</span><div><strong>Saved to Your Journey</strong><p>This accepted version is now part of your journal.</p></div></div>
+        ` : ''}
+        ${this.questionsHtml(l)}
+        ${Array.isArray(l.limitations) && l.limitations.length ? `<p class="evidence-note">Kept open: ${l.limitations.map(escapeHtml).join(' ')}</p>` : ''}
+      </article>`).join('');
+  },
+  artifactHtml(log, kind) {
+    const isBullet = kind === 'bullet';
+    const label = isBullet ? 'Résumé point' : 'Your story';
+    const value = isBullet ? (log.bullet ?? log.resume_bullet ?? '') : (log.story || '');
+    const accepted = Boolean(log.accepted && log.accepted[kind]);
+    return `
+      <section class="mini artifact${accepted ? ' accepted' : ''}" data-artifact="${kind}">
+        <div class="artifact-head">
+          <strong>${label}</strong>
+          ${accepted ? '<span class="accepted-mark">Accepted ✓</span>' : ''}
+        </div>
+        <p class="artifact-text${value ? '' : ' empty-artifact'}">${value ? escapeHtml(value) : 'This version was deleted. Edit or redo it when you are ready.'}</p>
+        <textarea class="ta sm artifact-editor" aria-label="Edit ${label}">${escapeHtml(value)}</textarea>
+        <div class="artifact-actions" aria-label="${label} actions">
+          <button class="artifact-action accept" type="button" data-action="accept" data-kind="${kind}"${accepted || !value ? ' disabled' : ''}>${accepted ? 'Accepted' : 'Accept'}</button>
+          <button class="artifact-action" type="button" data-action="edit" data-kind="${kind}">Edit</button>
+          <button class="artifact-action edit-only" type="button" data-action="save-edit" data-kind="${kind}">Save</button>
+          <button class="artifact-action edit-only" type="button" data-action="cancel-edit" data-kind="${kind}">Cancel</button>
+          <button class="artifact-action" type="button" data-action="copy" data-kind="${kind}"${value ? '' : ' disabled'}>Copy</button>
+          <button class="artifact-action" type="button" data-action="redo" data-kind="${kind}">Redo</button>
+          <button class="artifact-action danger" type="button" data-action="delete" data-kind="${kind}"${value ? '' : ' disabled'}>Delete</button>
+        </div>
+        <span class="artifact-status" role="status" aria-live="polite"></span>
+      </section>`;
+  },
+  questionsHtml(log) {
+    const questions = Array.isArray(log.questions) ? log.questions : [];
+    const suppliedAnswers = Object.entries(log.answers || {}).filter(([, answer]) => answer);
+    if (!questions.length) return '';
+    return `
+      <div class="follow-up-block">
+        ${suppliedAnswers.length ? `
+          <div class="added-details">
+            <strong>Details you added</strong>
+            ${suppliedAnswers.map(([question, answer]) => `
+              <p><span>${escapeHtml(question)}</span>${escapeHtml(answer)}</p>
+            `).join('')}
+          </div>
+        ` : ''}
+        <h4>Help CareerForge understand this moment</h4>
+        <p>Answer any question that feels useful. Skip anything private or unknown.</p>
+        ${questions.map((question, index) => `
+          <label class="follow-up-field">
+            <span>${escapeHtml(question)}</span>
+            <textarea class="ta sm follow-up-answer" data-question-index="${index}" placeholder="Optional answer">${escapeHtml((log.answers || {})[question] || '')}</textarea>
+          </label>
+        `).join('')}
+        <div class="logger-actions">
+          <button class="btn btn-ghost refine-log" type="button">Update my story</button>
+          <span class="logger-status refine-status" role="status" aria-live="polite"></span>
+        </div>
+      </div>`;
   },
   init(user) {
-    document.getElementById('logAdd').addEventListener('click', () => {
+    let selectedPrompt = '';
+    const addButton = document.getElementById('logAdd');
+    const status = document.getElementById('logStatus');
+    const textArea = document.getElementById('logText');
+
+    document.querySelectorAll('.prompt-chip').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedPrompt = LIFE_LOGGER_PROMPTS[Number(button.dataset.promptIndex)];
+        document.querySelectorAll('.prompt-chip').forEach(item => item.classList.toggle('active', item === button));
+        document.getElementById('logPrompt').textContent = selectedPrompt;
+        textArea.focus();
+      });
+    });
+
+    addButton.addEventListener('click', async () => {
       const el = document.getElementById('logText');
       const text = el.value.trim();
       if (!text) { el.focus(); return; }
-      const { skills, bullet, story } = logToPortfolio(text);
-      const logs = loadData(user, 'logs', []);
-      logs.push({ text, skills, bullet, story, at: new Date().toISOString() });
-      saveData(user, 'logs', logs);
-      el.value = '';
-      document.getElementById('logList').innerHTML = this.listHtml(logs);
-      document.querySelector('.list-head').textContent = `Your portfolio (${logs.length})`;
+      addButton.disabled = true;
+      addButton.textContent = 'Reflecting…';
+      status.textContent = 'CareerForge is finding the story in your own words.';
+      try {
+        const result = await requestLifeLogger(text, selectedPrompt);
+        const logs = loadData(user, 'logs', []);
+        logs.push({
+          id: `log-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          text,
+          prompt: selectedPrompt,
+          skills: result.skills,
+          bullet: result.resume_bullet,
+          story: result.story,
+          questions: result.follow_up_questions,
+          answers: {},
+          accepted: { bullet: false, story: false },
+          limitations: result.limitations,
+          at: new Date().toISOString(),
+        });
+        saveData(user, 'logs', logs);
+        el.value = '';
+        this.refreshList(user);
+        status.textContent = 'Reflection saved. You can add more detail below.';
+      } catch (error) {
+        status.textContent = error instanceof TypeError
+          ? 'Cannot reach Life Logger. Start the local API server and try again.'
+          : error.message;
+      } finally {
+        addButton.disabled = false;
+        addButton.textContent = 'Reflect on this experience';
+      }
+    });
+
+    this.bindRefineButtons(user);
+    this.bindArtifactActions(user);
+  },
+  refreshList(user) {
+    const logs = loadData(user, 'logs', []);
+    document.getElementById('logList').innerHTML = this.listHtml(logs);
+    document.querySelector('.list-head').textContent = `Your experience stories (${logs.length})`;
+    this.bindRefineButtons(user);
+    this.bindArtifactActions(user);
+  },
+  bindRefineButtons(user) {
+    document.querySelectorAll('.refine-log').forEach(button => {
+      button.addEventListener('click', async () => {
+        const card = button.closest('[data-log-id]');
+        const logs = loadData(user, 'logs', []);
+        const log = logs.find(item => item.id === card.dataset.logId);
+        if (!log) return;
+
+        const answers = { ...(log.answers || {}) };
+        card.querySelectorAll('.follow-up-answer').forEach(input => {
+          const question = log.questions[Number(input.dataset.questionIndex)];
+          const answer = input.value.trim();
+          if (answer) answers[question] = answer;
+        });
+        if (!Object.values(answers).some(Boolean)) {
+          card.querySelector('.refine-status').textContent = 'Answer at least one question to update the story.';
+          return;
+        }
+
+        button.disabled = true;
+        button.textContent = 'Updating…';
+        card.querySelector('.refine-status').textContent = 'Adding only the details you supplied.';
+        try {
+          const result = await requestLifeLogger(log.text, log.prompt || '', answers);
+          Object.assign(log, {
+            skills: result.skills,
+            bullet: result.resume_bullet,
+            story: result.story,
+            questions: result.follow_up_questions,
+            answers,
+            limitations: result.limitations,
+            accepted: { bullet: false, story: false },
+          });
+          this.syncJourney(user, log);
+          saveData(user, 'logs', logs);
+          this.refreshList(user);
+        } catch (error) {
+          button.disabled = false;
+          button.textContent = 'Update my story';
+          card.querySelector('.refine-status').textContent = error instanceof TypeError
+            ? 'Cannot reach Life Logger. Start the local API server and try again.'
+            : error.message;
+        }
+      });
+    });
+  },
+  syncJourney(user, log) {
+    const journey = loadData(user, 'journey', []);
+    const existingIndex = journey.findIndex(entry => entry.id === log.id);
+    const accepted = log.accepted || {};
+    const shouldSave = Boolean(accepted.bullet && accepted.story && log.bullet && log.story);
+
+    if (shouldSave) {
+      const previous = existingIndex >= 0 ? journey[existingIndex] : null;
+      const snapshot = {
+        id: log.id,
+        original: log.text,
+        prompt: log.prompt || '',
+        resumeBullet: log.bullet,
+        story: log.story,
+        loggedAt: log.at,
+        acceptedAt: previous ? previous.acceptedAt : new Date().toISOString(),
+      };
+      if (existingIndex >= 0) journey[existingIndex] = snapshot;
+      else journey.push(snapshot);
+    } else if (existingIndex >= 0) {
+      journey.splice(existingIndex, 1);
+    }
+    saveData(user, 'journey', journey);
+  },
+  bindArtifactActions(user) {
+    document.querySelectorAll('.artifact-action').forEach(button => {
+      button.addEventListener('click', async () => {
+        const card = button.closest('[data-log-id]');
+        const artifact = button.closest('[data-artifact]');
+        const kind = button.dataset.kind;
+        const action = button.dataset.action;
+        const logs = loadData(user, 'logs', []);
+        const log = logs.find(item => item.id === card.dataset.logId);
+        if (!log || !['bullet', 'story'].includes(kind)) return;
+        const status = artifact.querySelector('.artifact-status');
+        const value = kind === 'bullet' ? (log.bullet ?? log.resume_bullet ?? '') : (log.story || '');
+
+        if (action === 'edit') {
+          artifact.classList.add('editing');
+          const editor = artifact.querySelector('.artifact-editor');
+          editor.focus();
+          editor.setSelectionRange(editor.value.length, editor.value.length);
+          return;
+        }
+        if (action === 'cancel-edit') {
+          artifact.classList.remove('editing');
+          artifact.querySelector('.artifact-editor').value = value;
+          status.textContent = '';
+          return;
+        }
+        if (action === 'save-edit') {
+          const edited = artifact.querySelector('.artifact-editor').value.trim();
+          if (!edited) {
+            status.textContent = 'Enter some text, or use Delete to remove this version.';
+            return;
+          }
+          log[kind] = edited;
+          log.accepted = { ...(log.accepted || {}), [kind]: false };
+          this.syncJourney(user, log);
+          saveData(user, 'logs', logs);
+          this.refreshList(user);
+          return;
+        }
+        if (action === 'accept') {
+          if (!value) return;
+          log.accepted = { ...(log.accepted || {}), [kind]: true };
+          this.syncJourney(user, log);
+          saveData(user, 'logs', logs);
+          this.refreshList(user);
+          return;
+        }
+        if (action === 'delete') {
+          log[kind] = '';
+          log.accepted = { ...(log.accepted || {}), [kind]: false };
+          this.syncJourney(user, log);
+          saveData(user, 'logs', logs);
+          this.refreshList(user);
+          return;
+        }
+        if (action === 'copy') {
+          try {
+            await copyText(value);
+            status.textContent = 'Copied.';
+          } catch (error) {
+            status.textContent = error.message;
+          }
+          return;
+        }
+        if (action === 'redo') {
+          button.disabled = true;
+          status.textContent = `Creating another ${kind === 'bullet' ? 'résumé point' : 'story'} from your details…`;
+          try {
+            const result = await requestLifeLogger(log.text, log.prompt || '', log.answers || {});
+            log[kind] = kind === 'bullet' ? result.resume_bullet : result.story;
+            log.accepted = { ...(log.accepted || {}), [kind]: false };
+            this.syncJourney(user, log);
+            saveData(user, 'logs', logs);
+            this.refreshList(user);
+          } catch (error) {
+            button.disabled = false;
+            status.textContent = error instanceof TypeError
+              ? 'Cannot reach Life Logger. Start the local API server and try again.'
+              : error.message;
+          }
+        }
+      });
     });
   },
 };
 
-/* ---------- 2. AI INTERVIEW COACH ---------- */
+/* ---------- 2. YOUR JOURNEY ---------- */
+window.CF_FEATURES.journey = {
+  render(user) {
+    const journey = loadData(user, 'journey', []);
+    return `
+      <div class="feat journey-view">
+        <div class="journey-intro">
+          <span class="reflection-kicker">Your accepted progress</span>
+          <h3>A journal of experiences you chose to keep</h3>
+          <p>Each entry preserves what you originally logged alongside the résumé point and story you accepted.</p>
+        </div>
+        ${journey.length ? `
+          <div class="journey-timeline">
+            ${[...journey].reverse().map((entry, index) => `
+              <article class="journey-entry" data-journey-id="${escapeHtml(entry.id)}">
+                <div class="journey-marker" aria-hidden="true"></div>
+                <div class="journey-card">
+                  <div class="journey-date"><span>Entry ${journey.length - index}</span>${escapeHtml(journalDate(entry.acceptedAt || entry.loggedAt))}</div>
+                  ${entry.prompt ? `<p class="journey-prompt">${escapeHtml(entry.prompt)}</p>` : ''}
+                  <section><strong>What I originally logged</strong><p>${escapeHtml(entry.original)}</p></section>
+                  <section><strong>Résumé point</strong><p>${escapeHtml(entry.resumeBullet)}</p></section>
+                  <section class="journey-story"><strong>My story</strong><p>${escapeHtml(entry.story)}</p></section>
+                  <button class="journey-remove" type="button">Remove from Journey</button>
+                </div>
+              </article>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="journey-empty">
+            <span>✦</span>
+            <h3>Your journey starts with one accepted story</h3>
+            <p>In Life Logger, accept both the résumé point and story to add an entry here.</p>
+            <button class="btn btn-primary" type="button" data-nav="logger">Open Life Logger</button>
+          </div>
+        `}
+      </div>`;
+  },
+  init(user) {
+    document.querySelectorAll('.journey-remove').forEach(button => {
+      button.addEventListener('click', () => {
+        const id = button.closest('[data-journey-id]').dataset.journeyId;
+        const journey = loadData(user, 'journey', []).filter(entry => entry.id !== id);
+        const logs = loadData(user, 'logs', []);
+        const log = logs.find(entry => entry.id === id);
+        if (log) log.accepted = { bullet: false, story: false };
+        saveData(user, 'journey', journey);
+        saveData(user, 'logs', logs);
+        window.CF_RENDER_TOOL('journey');
+      });
+    });
+  },
+};
+
+/* ---------- 3. AI INTERVIEW COACH ---------- */
 window.CF_FEATURES.interview = {
   render(user) {
     return `

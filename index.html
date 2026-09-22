@@ -18,7 +18,7 @@
         <a href="#features">Features</a>
         <a href="#loop">How it works</a>
         <a href="auth.html" class="btn btn-ghost">Log in</a>
-        <a href="auth.html?mode=signup" class="btn btn-primary">Get started</a>
+        <a href="auth.html?mode=signup&amp;next=logger" class="btn btn-primary">Get started</a>
       </div>
     </div>
   </nav>
@@ -35,11 +35,11 @@
         peer and alumni reviews, all in one place.
       </p>
       <div class="hero-cta">
-        <a href="auth.html?mode=signup" class="btn btn-primary btn-lg">Get started free</a>
+        <a href="auth.html?mode=signup&amp;next=logger" class="btn btn-primary btn-lg">Start your story</a>
         <a href="#features" class="btn btn-ghost btn-lg">See the features</a>
       </div>
       <div class="hero-stats">
-        <div><strong>6</strong><span>tools, one dashboard</span></div>
+        <div><strong>7</strong><span>tools, one dashboard</span></div>
         <div><strong>100%</strong><span>anonymous by default</span></div>
         <div><strong>1</strong><span>required course to rule them all</span></div>
       </div>
@@ -49,15 +49,20 @@
   <!-- FEATURES -->
   <section id="features" class="section">
     <div class="section-head">
-      <h2>Six tools. One career loop.</h2>
+      <h2>Seven tools. One career loop.</h2>
       <p>Pick whatever you need. Each tool quietly makes the others smarter.</p>
     </div>
     <div class="feature-grid">
-      <div class="feature-card">
+      <a class="feature-card feature-link" href="dashboard.html?tool=logger" aria-label="Open Life Logger">
         <div class="feature-icon i1">📝</div>
-        <h3>Life Logger → Portfolio</h3>
-        <p>Log your day in seconds. AI turns it into skills, achievements, and ready-to-use interview stories.</p>
-      </div>
+        <h3>Life Logger → Your Story</h3>
+        <p>Reflect on one moment from your day. Get a grounded résumé point, a story in your own words, and questions that help you uncover more.</p>
+      </a>
+      <a class="feature-card feature-link" href="dashboard.html?tool=journey" aria-label="Open Your Journey">
+        <div class="feature-icon i2">✦</div>
+        <h3>Your Journey</h3>
+        <p>A minimal private journal for the original moments, résumé points, and stories you reviewed and accepted.</p>
+      </a>
       <div class="feature-card">
         <div class="feature-icon i2">🎤</div>
         <h3>AI Interview Coach</h3>
